@@ -6,7 +6,7 @@ from .forms import ContactForm, SearchForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
 import csv, os, datetime
-
+from io import TextIOWrapper
 
 
 
@@ -103,3 +103,22 @@ def get_export_file_path(user):
     return os.path.join(folder, filename)
 
 
+def import_from_csv(request):
+    if request.method == "POST":
+        file = TextIOWrapper(request.FILES['my_file'], encoding='utf-8')
+        reader = csv.DictReader(file)
+        for row in reader:
+            name = row['name']
+            phone_number = row['phone_number']
+            email = row['email']
+            address = row['address']
+            if Contact.objects.filter(phone_number=phone_number, author=request.user).exists():
+                pass
+            else:
+                Contact.objects.create(name=name, 
+                                       phone_number=phone_number, 
+                                       email=email, 
+                                       address=address,
+                                       author=request.user)
+                
+    return redirect('myApp:contact_list')
