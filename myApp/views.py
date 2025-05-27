@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import redirect, render
 from django.views import generic
 from .models import Contact
 from .forms import ContactForm, SearchForm
@@ -7,6 +7,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
 import csv, os, datetime
 from io import TextIOWrapper
+from .people import get_google_flow
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from django.http import HttpResponse
+
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 
 
@@ -93,6 +99,7 @@ def export_to_csv(request):
     return redirect('myApp:contact_list')
 
 
+
 def get_export_file_path(user):
     '''
     Create a folder path and file name base on user's name and date.
@@ -122,3 +129,58 @@ def import_from_csv(request):
                                        author=request.user)
                 
     return redirect('myApp:contact_list')
+
+
+
+
+def authorize(request):
+    flow = get_google_flow()
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+    request.session['state'] = state  
+    return redirect(authorization_url)
+
+
+def oauth2callback(request):
+    state = request.session.get('state')
+    if not state:
+        return HttpResponse("Missing state in session. Please start the login again.")
+
+    flow = get_google_flow()
+    flow.fetch_token(authorization_response=request.build_absolute_uri())
+
+    credentials = flow.credentials
+
+    # Store credentials in session (not safe for production; better use a DB or encrypted store)
+    request.session['credentials'] = {
+        'token': credentials.token,
+        'refresh_token': credentials.refresh_token,
+        'token_uri': credentials.token_uri,
+        'client_id': credentials.client_id,
+        'client_secret': credentials.client_secret,
+        'scopes': credentials.scopes
+    }
+
+    return redirect('myApp:google_contacts')
+
+
+def contacts(request):
+    if 'credentials' not in request.session:
+        return redirect('myApp:authorize')
+
+    creds_data = request.session['credentials']
+    creds = Credentials(**creds_data)
+
+    service = build('people', 'v1', credentials=creds)
+
+    results = service.people().connections().list(
+        resourceName='people/me',
+        pageSize=10,
+        personFields='names,emailAddresses,phoneNumbers,addresses'
+    ).execute()
+
+    contacts = results.get('connections', [])
+    return render(request, 'myApp/google_contacts.html', {'contacts': contacts})

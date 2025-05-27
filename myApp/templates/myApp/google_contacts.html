@@ -1,0 +1,49 @@
+{% extends 'base.html' %} {% load django_bootstrap5 %} {% block content %}
+<div class="container py-5">
+
+  <h2 class="mb-4">List of contacts from Google Contact:</h2>
+  {% if not contacts %}
+  <p class="text-danger mt-3">No contacts found.</p>
+  {% endif %}
+
+  <table class="table table-dark table-hover">
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Phone Number</th>
+        <th scope="col">Email</th>
+        <th scope="col">Address</th>
+        <th scope="col">Edit</th>
+        <th scope="col">Delete</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for contact in contacts %}
+      <tr>
+        <td>{{ contact.names.0.displayName }}</td>
+        <td>{{ contact.phoneNumbers.0.value }}</td>
+        <td>{{ contact.emailAddresses.0.value }}</td>
+        <td>{{ contact.addresses.0.formattedValue }}</td>
+        </td>
+        <td>
+          <a
+            href=""
+            class="btn btn-outline-warning"
+            >Edit</a
+          >
+        </td>
+        <td>
+          <a
+            href=""
+            class="btn btn-outline-danger"
+            >Delete</a
+          >
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  
+</div>
+{% endblock content %}
