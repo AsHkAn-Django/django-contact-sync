@@ -12,6 +12,7 @@ contact_exports/
 
 # Distribution / packaging
 .Python
+credentials.json
 build/
 develop-eggs/
 dist/

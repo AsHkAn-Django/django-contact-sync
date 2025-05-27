@@ -7,10 +7,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
 import csv, os, datetime
 from io import TextIOWrapper
-from .people import get_google_flow
+from .google import get_google_flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from django.http import HttpResponse
+import urllib.parse
+
+
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
@@ -190,6 +193,8 @@ def add_contact_from_google(request, pk):
     if 'credentials' not in request.session:
         return redirect('myApp:authorize')
 
+    pk = f'people/{pk}'
+    
     creds_data = request.session['credentials']
     creds = Credentials(**creds_data)
 

@@ -27,7 +27,7 @@
         </td>
         <td>
           <a
-            href="{% url 'myApp:add_from_google' contact.resourceName  %}"
+            href="{% url 'myApp:add_from_google' pk=contact.resourceName|cut:'people/' %}"
             class="btn btn-outline-warning btn-sm"
             >Add to DB</a
           >

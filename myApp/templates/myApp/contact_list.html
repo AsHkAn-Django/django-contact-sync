@@ -34,6 +34,13 @@
         <td>{{ contact.address }}</td>
         <td>
           <a
+            href=""
+            class="btn btn-outline-success btn-sm"
+            >Add to Google</a
+          >
+        </td>
+        <td>
+          <a
             href="{% url 'myApp:edit_contact' contact.pk %}"
             class="btn btn-outline-warning"
             >Edit</a
