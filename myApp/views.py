@@ -167,7 +167,7 @@ def oauth2callback(request):
     return redirect('myApp:google_contacts')
 
 
-def contacts(request):
+def get_google_contacts(request):
     if 'credentials' not in request.session:
         return redirect('myApp:authorize')
 
@@ -181,6 +181,38 @@ def contacts(request):
         pageSize=10,
         personFields='names,emailAddresses,phoneNumbers,addresses'
     ).execute()
-
     contacts = results.get('connections', [])
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
+
+
+
+def add_contact_from_google(request, pk):
+    if 'credentials' not in request.session:
+        return redirect('myApp:authorize')
+
+    creds_data = request.session['credentials']
+    creds = Credentials(**creds_data)
+
+    service = build('people', 'v1', credentials=creds)
+
+    # Fetch a single contact by resourceName (e.g., 'people/c123456')
+    contact = service.people().get(
+        resourceName=pk,
+        personFields='names,emailAddresses,phoneNumbers,addresses'
+    ).execute()
+
+    name = contact['names'][0]['displayName'] if 'names' in contact else ''
+    phone_number = contact['phoneNumbers'][0]['value'] if 'phoneNumbers' in contact else ''
+    email = contact['emailAddresses'][0]['value'] if 'emailAddresses' in contact else ''
+    address = contact['addresses'][0]['formattedValue'] if 'addresses' in contact else ''
+
+    if phone_number and not Contact.objects.filter(phone_number=phone_number, author=request.user).exists():
+        Contact.objects.create(
+            name=name,
+            phone_number=phone_number,
+            email=email,
+            address=address,
+            author=request.user
+        )
+
+    return redirect('myApp:contact_list')

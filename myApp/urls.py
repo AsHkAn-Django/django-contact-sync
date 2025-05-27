@@ -12,6 +12,8 @@ urlpatterns = [
     path('', views.IndexView.as_view(), name='home'),
     path('authorize/', views.authorize, name='authorize'),
     path('oauth2callback/', views.oauth2callback, name='oauth2callback'),
-    path('contacts/', views.contacts, name='google_contacts'),
+    path('google_contacts/', views.get_google_contacts, name='google_contacts'),
+    path('google_contacts/add_from_google/<str:pk>', views.add_contact_from_google, name='add_from_google'),
+
     
 ]

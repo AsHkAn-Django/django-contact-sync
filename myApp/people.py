@@ -1,5 +1,4 @@
 import os
-import json
 from google_auth_oauthlib.flow import Flow
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

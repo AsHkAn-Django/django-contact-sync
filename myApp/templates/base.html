@@ -35,6 +35,9 @@
             <a class="nav-link" href="{% url 'myApp:add_contact' %}">Add a Contact</a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="{% url 'myApp:google_contacts' %}">Google Contact</a>
+          </li>
+          <li class="nav-item">
             <form action="{% url 'logout' %}" method="post" class="d-inline">
               {% csrf_token %}
               <button type="submit" class="btn btn-link nav-link text-danger">Logout</button>
