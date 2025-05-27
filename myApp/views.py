@@ -1,5 +1,5 @@
 from django.urls import reverse_lazy
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.views import generic
 from .models import Contact
 from .forms import ContactForm, SearchForm
@@ -11,7 +11,6 @@ from .google import get_google_flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from django.http import HttpResponse
-import urllib.parse
 
 
 
@@ -185,6 +184,7 @@ def get_google_contacts(request):
         personFields='names,emailAddresses,phoneNumbers,addresses'
     ).execute()
     contacts = results.get('connections', [])
+    print(contacts[0])
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
 
 
@@ -221,3 +221,29 @@ def add_contact_from_google(request, pk):
         )
 
     return redirect('myApp:contact_list')
+
+def add_contact_in_google(request, pk):
+    contact = get_object_or_404(Contact, pk=pk)
+    
+    if 'credentials' not in request.session:
+        return redirect('myApp:authorize')
+    creds_data = request.session['credentials']
+    creds = Credentials(**creds_data)
+    service = build('people', 'v1', credentials=creds)
+
+    contact_body = {}
+    if contact.name:
+        contact_body['names'] = [{'givenName': contact.name}]
+    if contact.phone_number:
+        contact_body['phoneNumbers'] = [{'value': str(contact.phone_number)}]
+    if contact.address:
+        contact_body['addresses'] = [{'formattedValue': contact.address}]
+    if contact.email:
+        contact_body['emailAddresses'] = [{'value': contact.email}]
+        
+    try:
+        service.people().createContact(body=contact_body).execute()
+    except Exception as e:
+        print("Error creating google contact:", e)
+        return HttpResponse(f'Google API error: {e}', status=500)
+    return redirect('myApp:google_contacts')

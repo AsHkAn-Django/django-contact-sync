@@ -21,6 +21,7 @@
         <th scope="col">Phone Number</th>
         <th scope="col">Email</th>
         <th scope="col">Address</th>
+        <th scope="col">Google</th>
         <th scope="col">Edit</th>
         <th scope="col">Delete</th>
       </tr>
@@ -34,22 +35,22 @@
         <td>{{ contact.address }}</td>
         <td>
           <a
-            href=""
+            href="{% url 'myApp:add_contact_in_google' contact.pk%}"
             class="btn btn-outline-success btn-sm"
-            >Add to Google</a
+            >Add</a
           >
         </td>
         <td>
           <a
             href="{% url 'myApp:edit_contact' contact.pk %}"
-            class="btn btn-outline-warning"
+            class="btn btn-outline-warning btn-sm"
             >Edit</a
           >
         </td>
         <td>
           <a
             href="{% url 'myApp:delete_contact' contact.pk %}"
-            class="btn btn-outline-danger"
+            class="btn btn-outline-danger btn-sm"
             >Delete</a
           >
         </td>
