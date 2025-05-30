@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from phonenumber_field.modelfields import PhoneNumberField
 
+
 class Contact(models.Model):
   name = models.CharField(max_length=200)
   phone_number = PhoneNumberField(region='TR')
