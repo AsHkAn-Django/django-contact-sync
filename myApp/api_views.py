@@ -1,5 +1,5 @@
 from rest_framework import generics
-from myApp.models import Contact
+from .models import Contact
 from .serializers import ContactSerializer
 
 

@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     
     'myApp',
     'registration',
-    'api',
 ]
 
 MIDDLEWARE = [
