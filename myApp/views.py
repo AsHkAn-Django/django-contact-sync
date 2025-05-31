@@ -11,6 +11,7 @@ from .google import get_google_flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from django.http import HttpResponse
+from django.contrib import messages
 
 
 
@@ -102,6 +103,7 @@ def export_now(user):
         print(f"CSV export failed: {e}")
     return file_path
 
+
 def get_export_file_path(user):
     '''
     Create a folder path and file name base on user's name and date.
@@ -114,25 +116,29 @@ def get_export_file_path(user):
 
 def import_from_csv(request):
     if request.method == "POST":
-        file = TextIOWrapper(request.FILES['my_file'], encoding='utf-8')
-        reader = csv.DictReader(file)
-        for row in reader:
-            name = row['name']
-            phone_number = row['phone_number']
-            email = row['email']
-            address = row['address']
-            if Contact.objects.filter(phone_number=phone_number, author=request.user).exists():
-                pass
-            else:
-                Contact.objects.create(name=name, 
-                                       phone_number=phone_number, 
-                                       email=email, 
-                                       address=address,
-                                       author=request.user)
-                
+        uploaded_file = request.FILES.get('my_file')  
+        if not uploaded_file or not uploaded_file.name.endswith('.csv'):
+            messages.warning(request, 'Please upload a valid CSV file.')
+            return redirect('myApp:contact_list')
+        import_now(request.user, uploaded_file)
+        messages.success(request, 'Contacts were successfully added.')
     return redirect('myApp:contact_list')
 
 
+def import_now(user, uploaded_file):
+    encoded_file = TextIOWrapper(uploaded_file, encoding='utf-8')
+    reader = csv.DictReader(encoded_file)
+    for row in reader:
+        name = row['name']
+        phone_number = row['phone_number']
+        email = row['email']
+        address = row['address']
+        if not Contact.objects.filter(phone_number=phone_number, author=user).exists():
+            Contact.objects.create(name=name, 
+                                    phone_number=phone_number, 
+                                    email=email, 
+                                    address=address,
+                                    author=user)
 
 
 def authorize(request):
