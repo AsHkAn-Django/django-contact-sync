@@ -1,9 +1,10 @@
 from django.urls import path
+from rest_framework.routers import SimpleRouter
 from . import api_views
 
 myapp = 'api'
 
-urlpatterns = [
-    path('', api_views.ContactListAPIView.as_view(), name='contact-list-api'),
-    path('<int:pk>/', api_views.ContactDetailAPIView.as_view(), name='contact-detail-api')
-]
+router = SimpleRouter()
+router.register('', api_views.ContactAPIViewSet, basename='contacts')
+
+urlpatterns = router.urls
