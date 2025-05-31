@@ -78,11 +78,14 @@ class ContactDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteV
 
 
 def export_to_csv(request):
-    '''
-    Export all the user's contacts to a csv file.
-    '''
-    contacts = Contact.objects.filter(author=request.user)
-    file_path = get_export_file_path(request.user)
+    '''Export all the user's contacts to a csv file.'''
+    export_now(request.user)
+    return redirect('myApp:contact_list')
+
+
+def export_now(user):
+    contacts = Contact.objects.filter(author=user)
+    file_path = get_export_file_path(user)
     try:
         with open(file_path, 'w', newline='', encoding='utf-8') as file:
             writer = csv.DictWriter(file, fieldnames=['name', 'phone_number', 'email', 'address'])
@@ -97,10 +100,7 @@ def export_to_csv(request):
                 writer.writerow(contacts_dic)
     except Exception as e:
         print(f"CSV export failed: {e}")
-        
-    return redirect('myApp:contact_list')
-
-
+    return file_path
 
 def get_export_file_path(user):
     '''
