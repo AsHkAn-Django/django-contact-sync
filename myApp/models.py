@@ -23,7 +23,7 @@ class GoogleAuth(models.Model):
     client_secret = models.TextField()
     scopes = models.TextField()
     expiry = models.DateTimeField()
-    
+
     
 class OAuthState(models.Model):
     state = models.CharField(max_length=255, unique=True)

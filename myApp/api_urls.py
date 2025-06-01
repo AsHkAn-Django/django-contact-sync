@@ -2,9 +2,12 @@ from django.urls import path
 from rest_framework.routers import SimpleRouter
 from . import api_views
 
-myapp = 'api'
+app_name = 'api'
 
 router = SimpleRouter()
-router.register('', api_views.ContactAPIViewSet, basename='contacts')
+router.register('contacts', api_views.ContactAPIViewSet, basename='contacts')
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path('authorize/', api_views.authorize, name='authorize'),
+    path('oauth2callback/', api_views.oauth2callback, name='oauth2callback'),
+]

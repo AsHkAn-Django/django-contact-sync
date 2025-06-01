@@ -22,10 +22,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/', include('user_registration.urls')),
-    path('api/', include('myApp.api_urls')),
     path('api-auth/', include('rest_framework.urls')),
     path('api/dj-rest-auth/', include('dj_rest_auth.urls')),
     path('api/dj-rest-auth/registration/', include('dj_rest_auth.registration.urls')),
-    path('', include('myApp.urls')),
+    path('api/', include('myApp.api_urls', namespace='api')),
+    path('', include('myApp.urls', namespace='myApp')),
     
 ]
