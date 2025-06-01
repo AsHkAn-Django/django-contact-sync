@@ -5,9 +5,9 @@ from .serializers import ContactSerializer
 from .permissions import IsOwner
 from rest_framework.decorators import action
 from .views import export_now, import_now
-import csv, io
-from io import TextIOWrapper
-
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from django.shortcuts import redirect
 
 
 
@@ -29,6 +29,23 @@ class ContactAPIViewSet(viewsets.ModelViewSet):
         if not uploaded_file or not uploaded_file.name.endswith('.csv'):
             return Response({'error': 'Please upload a valid CSV file.'}, status=400)
 
-        import_now(request.user, uploaded_file.file)
-        
+        import_now(request.user, uploaded_file.file)        
         return Response({'success': 'Contacts imported successfully!'})
+
+    @action(detail=False, methods=['get'])
+    def api_google_contact(self, request):
+        if 'credentials' not in request.session:
+         return redirect('myApp:authorize')
+
+        creds_data = request.session['credentials']
+        creds = Credentials(**creds_data)
+
+        service = build('people', 'v1', credentials=creds)
+
+        results = service.people().connections().list(
+            resourceName='people/me',
+            pageSize=10,
+            personFields='names,emailAddresses,phoneNumbers,addresses'
+        ).execute()
+        contacts = results.get('connections', [])
+        return Response({'contacts': contacts})

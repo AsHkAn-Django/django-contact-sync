@@ -190,7 +190,6 @@ def get_google_contacts(request):
         personFields='names,emailAddresses,phoneNumbers,addresses'
     ).execute()
     contacts = results.get('connections', [])
-    print(contacts[0])
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
 
 
