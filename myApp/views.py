@@ -1,7 +1,7 @@
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render, get_object_or_404
 from django.views import generic
-from .models import Contact
+from .models import Contact, GoogleAuth, OAuthState
 from .forms import ContactForm, SearchForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
@@ -12,10 +12,16 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from django.http import HttpResponse
 from django.contrib import messages
+from django.urls import reverse
+import secrets
+from django.http import JsonResponse, HttpResponseRedirect
+
+
 
 
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+REDIRECT_URI = 'http://localhost:8000/oauth2callback/'
 
 
 
@@ -77,6 +83,8 @@ class ContactDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteV
         obj = self.get_object()
         return obj.author == self.request.user
 
+
+# -----------EXPORT AND IMPORT-------------
 
 def export_to_csv(request):
     '''Export all the user's contacts to a csv file.'''
@@ -141,67 +149,47 @@ def import_now(user, uploaded_file):
                                     author=user)
 
 
+# -----------GOOGLE CONTACT-------------
+
+
 def authorize(request):
-    flow = get_google_flow()
-    authorization_url, state = flow.authorization_url(
-        access_type='offline',
-        include_granted_scopes='true',
-        prompt='consent'
-    )
-    request.session['state'] = state  
+    authorization_url, _ = get_google_authorization_url(REDIRECT_URI)
     return redirect(authorization_url)
 
 
+
 def oauth2callback(request):
-    state = request.session.get('state')
-    if not state:
-        return HttpResponse("Missing state in session. Please start the login again.")
-
-    flow = get_google_flow()
-    flow.fetch_token(authorization_response=request.build_absolute_uri())
-
-    credentials = flow.credentials
-
-    # Store credentials in session (not safe for production; better use a DB or encrypted store)
-    request.session['credentials'] = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes
-    }
-
+    state = request.GET.get('state')
+    code = request.GET.get('code')
+    handle_callback_and_googleauth(request, state, code, REDIRECT_URI)
     return redirect('myApp:google_contacts')
 
 
+
 def get_google_contacts(request):
-    if 'credentials' not in request.session:
-        return redirect('myApp:authorize')
-
-    creds_data = request.session['credentials']
-    creds = Credentials(**creds_data)
-
-    service = build('people', 'v1', credentials=creds)
-
-    results = service.people().connections().list(
-        resourceName='people/me',
-        pageSize=10,
-        personFields='names,emailAddresses,phoneNumbers,addresses'
-    ).execute()
-    contacts = results.get('connections', [])
+    google_auth = get_googleauth_or_authorize(request)
+    if isinstance(google_auth, HttpResponseRedirect):
+        return google_auth    
+    contacts = create_google_credentials(google_auth)
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
 
 
 
 def add_contact_from_google(request, pk):
-    if 'credentials' not in request.session:
-        return redirect('myApp:authorize')
-
+    google_auth = get_googleauth_or_authorize(request)    
+    if isinstance(google_auth, HttpResponseRedirect):
+        return google_auth 
+    
     pk = f'people/{pk}'
     
-    creds_data = request.session['credentials']
-    creds = Credentials(**creds_data)
+    creds = Credentials(
+        token=google_auth.access_token,
+        refresh_token=google_auth.refresh_token,
+        token_uri=google_auth.token_uri,
+        client_id=google_auth.client_id,
+        client_secret=google_auth.client_secret,
+        scopes=google_auth.scopes.split(','),
+    )
 
     service = build('people', 'v1', credentials=creds)
 
@@ -224,16 +212,24 @@ def add_contact_from_google(request, pk):
             address=address,
             author=request.user
         )
-
     return redirect('myApp:contact_list')
+
+
 
 def add_contact_in_google(request, pk):
     contact = get_object_or_404(Contact, pk=pk)
     
-    if 'credentials' not in request.session:
-        return redirect('myApp:authorize')
-    creds_data = request.session['credentials']
-    creds = Credentials(**creds_data)
+    google_auth = get_googleauth_or_authorize(request)    
+    if isinstance(google_auth, HttpResponseRedirect):
+        return google_auth 
+    creds = Credentials(
+        token=google_auth.access_token,
+        refresh_token=google_auth.refresh_token,
+        token_uri=google_auth.token_uri,
+        client_id=google_auth.client_id,
+        client_secret=google_auth.client_secret,
+        scopes=google_auth.scopes.split(','),
+    )    
     service = build('people', 'v1', credentials=creds)
 
     contact_body = {}
@@ -249,6 +245,84 @@ def add_contact_in_google(request, pk):
     try:
         service.people().createContact(body=contact_body).execute()
     except Exception as e:
-        print("Error creating google contact:", e)
         return HttpResponse(f'Google API error: {e}', status=500)
     return redirect('myApp:google_contacts')
+
+
+
+def create_google_credentials(google_auth):
+    creds = Credentials(
+        token=google_auth.access_token,
+        refresh_token=google_auth.refresh_token,
+        token_uri=google_auth.token_uri,
+        client_id=google_auth.client_id,
+        client_secret=google_auth.client_secret,
+        scopes=google_auth.scopes.split(','),
+    )
+    
+    service = build('people', 'v1', credentials=creds)
+
+    results = service.people().connections().list(
+        resourceName='people/me',
+        pageSize=10,
+        personFields='names,emailAddresses,phoneNumbers,addresses'
+    ).execute()
+    contacts = results.get('connections', [])
+    return contacts
+
+
+def get_google_authorization_url(REDIRECT_URI):
+    flow = get_google_flow(REDIRECT_URI)
+    state = secrets.token_urlsafe(32)
+    temp_user_token = secrets.token_urlsafe(16)
+    OAuthState.objects.create(state=state, temp_user_token=temp_user_token)  
+    
+    authorization_url, _ = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent',
+        state=state
+    )
+    return authorization_url, temp_user_token
+
+
+
+def handle_callback_and_googleauth(request, state, code, REDIRECT_URI):
+    if not state or not code:
+        return JsonResponse({"error": "Missing state or code."}, status=400)
+
+    try:
+        oauth_state = OAuthState.objects.get(state=state)
+    except OAuthState.DoesNotExist:
+        return JsonResponse({'error': 'Invalid stete.'}, status=400) 
+    
+    flow = get_google_flow(REDIRECT_URI)
+    flow.fetch_token(authorization_response=request.build_absolute_uri())
+
+    credentials = flow.credentials
+
+    GoogleAuth.objects.update_or_create(
+        user=request.user,
+        defaults={
+            'access_token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': ",".join(credentials.scopes),
+            'expiry': credentials.expiry,
+        }
+    )
+    oauth_state.delete()
+    return None
+    
+    
+    
+def get_googleauth_or_authorize(request):
+    try:
+        google_auth = GoogleAuth.objects.get(user=request.user)
+    except GoogleAuth.DoesNotExist:
+        return redirect(reverse('myApp:authorize'))
+    return google_auth
+    
+    
