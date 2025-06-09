@@ -5,11 +5,8 @@ from .serializers import ContactSerializer
 from .permissions import IsOwner
 from rest_framework.decorators import action, api_view
 from .views import export_now, import_now, create_google_credentials, get_google_authorization_url, handle_callback_and_googleauth
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 from django.shortcuts import redirect
 from django.urls import reverse
-from .google import get_google_flow
 
 
 
@@ -19,9 +16,9 @@ REDIRECT_URI = 'http://localhost:8000/api/oauth2callback/'
 
 class ContactAPIViewSet(viewsets.ModelViewSet):
     serializer_class = ContactSerializer
-    
+
     def get_queryset(self):
-        return Contact.objects.filter(author=self.request.user)    
+        return Contact.objects.filter(author=self.request.user)
 
     @action(detail=False, methods=['GET'])
     def export_csv(self, request):
@@ -35,7 +32,7 @@ class ContactAPIViewSet(viewsets.ModelViewSet):
         if not uploaded_file or not uploaded_file.name.endswith('.csv'):
             return Response({'error': 'Please upload a valid CSV file.'}, status=400)
 
-        import_now(request.user, uploaded_file.file)        
+        import_now(request.user, uploaded_file.file)
         return Response({'success': 'Contacts imported successfully!'})
 
     @action(detail=False, methods=['get'])
@@ -44,11 +41,11 @@ class ContactAPIViewSet(viewsets.ModelViewSet):
             google_auth = GoogleAuth.objects.get(user=request.user)
         except GoogleAuth.DoesNotExist:
             return redirect(reverse('api:authorize'))
-         
+
         contacts = create_google_credentials(google_auth)
         return Response({'contacts': contacts})
-    
-    
+
+
 @api_view(['GET'])
 def authorize(request):
     authorization_url, temp_user_token = get_google_authorization_url(REDIRECT_URI)

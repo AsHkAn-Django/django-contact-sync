@@ -1,20 +1,22 @@
 from django.urls import reverse_lazy
 from django.shortcuts import redirect, render, get_object_or_404
 from django.views import generic
-from .models import Contact, GoogleAuth, OAuthState
-from .forms import ContactForm, SearchForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Q
-import csv, os, datetime
-from io import TextIOWrapper
-from .google import get_google_flow
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from django.http import HttpResponse
 from django.contrib import messages
 from django.urls import reverse
-import secrets
 from django.http import JsonResponse, HttpResponseRedirect
+from django.http import HttpResponse
+
+from .models import Contact, GoogleAuth, OAuthState
+from .forms import ContactForm, SearchForm
+from .google import get_google_flow
+
+import csv, os, datetime, secrets
+from io import TextIOWrapper
+
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 
 
 
@@ -27,28 +29,28 @@ REDIRECT_URI = 'http://localhost:8000/oauth2callback/'
 
 class IndexView(generic.TemplateView):
     template_name = "myApp/index.html"
-    
+
 
 class ContactListView(LoginRequiredMixin, generic.ListView):
     model = Contact
     context_object_name = 'contacts'
     template_name = "myApp/contact_list.html"
-    
+
     def get_queryset(self):
         query_set = Contact.objects.filter(author=self.request.user)
-        querry = self.request.GET.get('search_body') 
+        querry = self.request.GET.get('search_body')
         if querry:
             query_set = query_set.filter(Q(name__icontains=querry) |
                                          Q(phone_number__icontains=querry) |
                                          Q(email__icontains=querry) |
-                                         Q(address__icontains=querry))            
+                                         Q(address__icontains=querry))
         return query_set
-        
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = SearchForm(self.request.GET or None)
         return context
-    
+
 
 
 class AddContactView(LoginRequiredMixin, generic.CreateView):
@@ -56,9 +58,9 @@ class AddContactView(LoginRequiredMixin, generic.CreateView):
     form_class = ContactForm
     template_name = "myApp/add_contact.html"
     success_url = reverse_lazy('myApp:contact_list')
-    
-    def form_valid(self, form):        
-        form.instance.author = self.request.user       
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
         return super().form_valid(form)
 
 
@@ -68,7 +70,7 @@ class EditContactView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateVie
     form_class = ContactForm
     template_name = "myApp/edit_contact.html"
     success_url = reverse_lazy('myApp:contact_list')
-    
+
     def test_func(self):
         obj = self.get_object()
         return obj.author == self.request.user
@@ -78,7 +80,7 @@ class ContactDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteV
     model = Contact
     template_name = "myApp/delete_contact.html"
     success_url = reverse_lazy('myApp:contact_list')
-    
+
     def test_func(self):
         obj = self.get_object()
         return obj.author == self.request.user
@@ -99,7 +101,7 @@ def export_now(user):
         with open(file_path, 'w', newline='', encoding='utf-8') as file:
             writer = csv.DictWriter(file, fieldnames=['name', 'phone_number', 'email', 'address'])
             writer.writeheader()
-            for contact in contacts: 
+            for contact in contacts:
                 contacts_dic = {
                     'name':contact.name,
                     'phone_number': contact.phone_number,
@@ -124,7 +126,7 @@ def get_export_file_path(user):
 
 def import_from_csv(request):
     if request.method == "POST":
-        uploaded_file = request.FILES.get('my_file')  
+        uploaded_file = request.FILES.get('my_file')
         if not uploaded_file or not uploaded_file.name.endswith('.csv'):
             messages.warning(request, 'Please upload a valid CSV file.')
             return redirect('myApp:contact_list')
@@ -142,9 +144,9 @@ def import_now(user, uploaded_file):
         email = row['email']
         address = row['address']
         if not Contact.objects.filter(phone_number=phone_number, author=user).exists():
-            Contact.objects.create(name=name, 
-                                    phone_number=phone_number, 
-                                    email=email, 
+            Contact.objects.create(name=name,
+                                    phone_number=phone_number,
+                                    email=email,
                                     address=address,
                                     author=user)
 
@@ -169,19 +171,19 @@ def oauth2callback(request):
 def get_google_contacts(request):
     google_auth = get_googleauth_or_authorize(request)
     if isinstance(google_auth, HttpResponseRedirect):
-        return google_auth    
+        return google_auth
     contacts = create_google_credentials(google_auth)
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
 
 
 
 def add_contact_from_google(request, pk):
-    google_auth = get_googleauth_or_authorize(request)    
+    google_auth = get_googleauth_or_authorize(request)
     if isinstance(google_auth, HttpResponseRedirect):
-        return google_auth 
-    
+        return google_auth
+
     pk = f'people/{pk}'
-    
+
     creds = Credentials(
         token=google_auth.access_token,
         refresh_token=google_auth.refresh_token,
@@ -218,10 +220,10 @@ def add_contact_from_google(request, pk):
 
 def add_contact_in_google(request, pk):
     contact = get_object_or_404(Contact, pk=pk)
-    
-    google_auth = get_googleauth_or_authorize(request)    
+
+    google_auth = get_googleauth_or_authorize(request)
     if isinstance(google_auth, HttpResponseRedirect):
-        return google_auth 
+        return google_auth
     creds = Credentials(
         token=google_auth.access_token,
         refresh_token=google_auth.refresh_token,
@@ -229,7 +231,7 @@ def add_contact_in_google(request, pk):
         client_id=google_auth.client_id,
         client_secret=google_auth.client_secret,
         scopes=google_auth.scopes.split(','),
-    )    
+    )
     service = build('people', 'v1', credentials=creds)
 
     contact_body = {}
@@ -241,7 +243,7 @@ def add_contact_in_google(request, pk):
         contact_body['addresses'] = [{'formattedValue': contact.address}]
     if contact.email:
         contact_body['emailAddresses'] = [{'value': contact.email}]
-        
+
     try:
         service.people().createContact(body=contact_body).execute()
     except Exception as e:
@@ -259,7 +261,7 @@ def create_google_credentials(google_auth):
         client_secret=google_auth.client_secret,
         scopes=google_auth.scopes.split(','),
     )
-    
+
     service = build('people', 'v1', credentials=creds)
 
     results = service.people().connections().list(
@@ -275,8 +277,8 @@ def get_google_authorization_url(REDIRECT_URI):
     flow = get_google_flow(REDIRECT_URI)
     state = secrets.token_urlsafe(32)
     temp_user_token = secrets.token_urlsafe(16)
-    OAuthState.objects.create(state=state, temp_user_token=temp_user_token)  
-    
+    OAuthState.objects.create(state=state, temp_user_token=temp_user_token)
+
     authorization_url, _ = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
@@ -294,8 +296,8 @@ def handle_callback_and_googleauth(request, state, code, REDIRECT_URI):
     try:
         oauth_state = OAuthState.objects.get(state=state)
     except OAuthState.DoesNotExist:
-        return JsonResponse({'error': 'Invalid stete.'}, status=400) 
-    
+        return JsonResponse({'error': 'Invalid stete.'}, status=400)
+
     flow = get_google_flow(REDIRECT_URI)
     flow.fetch_token(authorization_response=request.build_absolute_uri())
 
@@ -315,14 +317,13 @@ def handle_callback_and_googleauth(request, state, code, REDIRECT_URI):
     )
     oauth_state.delete()
     return None
-    
-    
-    
+
+
+
 def get_googleauth_or_authorize(request):
     try:
         google_auth = GoogleAuth.objects.get(user=request.user)
     except GoogleAuth.DoesNotExist:
         return redirect(reverse('myApp:authorize'))
     return google_auth
-    
-    
+
