@@ -19,12 +19,8 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 
 
-
-
-
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 REDIRECT_URI = 'http://localhost:8000/oauth2callback/'
-
 
 
 class IndexView(generic.TemplateView):
@@ -52,7 +48,6 @@ class ContactListView(LoginRequiredMixin, generic.ListView):
         return context
 
 
-
 class AddContactView(LoginRequiredMixin, generic.CreateView):
     model = Contact
     form_class = ContactForm
@@ -62,7 +57,6 @@ class AddContactView(LoginRequiredMixin, generic.CreateView):
     def form_valid(self, form):
         form.instance.author = self.request.user
         return super().form_valid(form)
-
 
 
 class EditContactView(LoginRequiredMixin, UserPassesTestMixin, generic.UpdateView):
@@ -159,13 +153,11 @@ def authorize(request):
     return redirect(authorization_url)
 
 
-
 def oauth2callback(request):
     state = request.GET.get('state')
     code = request.GET.get('code')
     handle_callback_and_googleauth(request, state, code, REDIRECT_URI)
     return redirect('myApp:google_contacts')
-
 
 
 def get_google_contacts(request):
@@ -174,7 +166,6 @@ def get_google_contacts(request):
         return google_auth
     contacts = create_google_credentials(google_auth)
     return render(request, 'myApp/google_contacts.html', {'contacts': contacts})
-
 
 
 def add_contact_from_google(request, pk):
@@ -217,7 +208,6 @@ def add_contact_from_google(request, pk):
     return redirect('myApp:contact_list')
 
 
-
 def add_contact_in_google(request, pk):
     contact = get_object_or_404(Contact, pk=pk)
 
@@ -249,7 +239,6 @@ def add_contact_in_google(request, pk):
     except Exception as e:
         return HttpResponse(f'Google API error: {e}', status=500)
     return redirect('myApp:google_contacts')
-
 
 
 def create_google_credentials(google_auth):
@@ -288,7 +277,6 @@ def get_google_authorization_url(REDIRECT_URI):
     return authorization_url, temp_user_token
 
 
-
 def handle_callback_and_googleauth(request, state, code, REDIRECT_URI):
     if not state or not code:
         return JsonResponse({"error": "Missing state or code."}, status=400)
@@ -317,7 +305,6 @@ def handle_callback_and_googleauth(request, state, code, REDIRECT_URI):
     )
     oauth_state.delete()
     return None
-
 
 
 def get_googleauth_or_authorize(request):
