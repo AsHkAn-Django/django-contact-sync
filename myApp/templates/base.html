@@ -35,6 +35,9 @@
             <a class="nav-link" href="{% url 'myApp:add_contact' %}">Add a Contact</a>
           </li>
           <li class="nav-item">
+            <a class="nav-link" href="{% url 'myApp:google_contacts' %}">Google Contact</a>
+          </li>
+          <li class="nav-item">
             <form action="{% url 'logout' %}" method="post" class="d-inline">
               {% csrf_token %}
               <button type="submit" class="btn btn-link nav-link text-danger">Logout</button>
@@ -45,7 +48,7 @@
             <a class="nav-link" href="{% url 'login' %}">Login</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'registration:signup' %}">Signup</a>
+            <a class="nav-link" href="{% url 'user_registration:signup' %}">Signup</a>
           </li>
           {% endif %}
         </ul>
@@ -54,6 +57,7 @@
   </nav>
 
   <main class="container mt-4">
+    {% bootstrap_messages %}
     {% block content %}
     {% endblock content %}
   </main>

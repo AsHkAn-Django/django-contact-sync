@@ -8,9 +8,11 @@ __pycache__/
 
 # media
 media/
+contact_exports/
 
 # Distribution / packaging
 .Python
+credentials.json
 build/
 develop-eggs/
 dist/
