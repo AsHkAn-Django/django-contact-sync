@@ -1,3 +1,16 @@
+# added by ashkan
+TODOLIST.md
+*migrations/
+migrations/
+**migrations
+/staticfiles/
+*.Zone.Identifier
+*:.Zone.Identifier
+dump.rdb
+dump.json
+credentials.json
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -8,11 +21,9 @@ __pycache__/
 
 # media
 media/
-contact_exports/
 
 # Distribution / packaging
 .Python
-credentials.json
 build/
 develop-eggs/
 dist/
@@ -64,6 +75,7 @@ cover/
 *.log
 local_settings.py
 db.sqlite3
+*.sqlite3
 db.sqlite3-journal
 
 # Flask stuff:
