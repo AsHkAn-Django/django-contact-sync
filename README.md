@@ -414,4 +414,3 @@ def import_now(user, uploaded_file):
                                     address=address,
                                     author=user)
 ```
->>>>>>> d47fa3747513d7b803f57002c3a8ce5cbfa59666
